@@ -22,9 +22,7 @@ def home(path):
 def execute(command):
   '''Execute command'''
   log.debug('EXECUTE %s' % command)
-  #os.spawnl(os.P_NOWAIT, command)
-  output = subprocess.check_output(command, stderr=subprocess.STDOUT)
-  log.debug(output)
+  os.popen(command + '&')
 
 def is_executable(path):
   '''Is this path an executable file'''
