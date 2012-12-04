@@ -47,7 +47,7 @@ class History(object):
     if self.TYPE_EXECUTABLE == command_type:
       execute(command)
     elif self.TYPE_FILE == command_type:
-      execute('see "%s"' % command)
+      execute('edit "%s"' % command)
     else:
       raise ValueError('Unknown command type "%s"' % command_type)
     # Pop to first place
