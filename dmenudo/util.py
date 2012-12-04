@@ -33,3 +33,19 @@ def is_executable(path):
 def is_directory(path):
   '''Is this path a directory'''
   return os.path.isdir(path)
+
+def calculate(expression):
+  '''Return the results for a numeric expression'''
+  # code based on http://lybniz2.sourceforge.net/safeeval.html
+  import math
+  safe_calls = ['math','acos', 'asin', 'atan', 'atan2', 'ceil', 'cos', 'cosh', 'degrees',
+                'e', 'exp', 'fabs', 'floor', 'fmod', 'frexp', 'hypot', 'ldexp', 'log',
+                'log10', 'modf', 'pi', 'pow', 'radians', 'sin', 'sinh', 'sqrt', 'tan', 'tanh']
+  # use the list to filter the local namespace
+  safe_dict = dict([ (k, math.__dict__.get(k, None)) for k in safe_calls ])
+  #add any needed builtins back in.
+  safe_dict['abs'] = abs
+  try:
+      return eval(expression, {"__builtins__":None}, safe_dict)
+  except:
+      return "invalid syntax!"

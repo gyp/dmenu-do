@@ -16,7 +16,7 @@ import os
 from subprocess import Popen, PIPE
 import logging as log
 
-from util import execute, home, is_directory, is_executable
+from util import execute, home, is_directory, is_executable, calculate
 
 class DMenu(object):
 
@@ -28,48 +28,15 @@ class DMenu(object):
   def run(self, command=''):
     '''Run the dmenu command recursively'''
     items = []
-    # Figure out which items to display
+    # user entered something
     if command:
-      # If current is empty, we are not walking a directory tree.  So, try and see if this is a
-      # session command or a path executable.
-      if not self._current:
-        if command in self._history:
-          log.debug('HISTORY: %s' % command)
-          # This is a history command, so run it.
-          self._history.execute(command)
+      new_items = self._handle_command(command)
+      if not new_items:
+          # this means that the command was actually a final that we started, nothing else to do
           return
-        if command in self._config.session.keys():
-          log.debug('SESSION: %s' % command)
-          # This is a session command, so run it.
-          execute(self._config.session[command])
-          return
-        if command in self._config.executables:
-          log.debug('EXECUTABLE: %s' % command)
-          self._history.add_executable(command)
-          # This is an executable, so run it.
-          execute(command)
-          return
-      # Otherwise, we must be walking a path, so join our current path
-      path = os.path.join(self._current, home(command));
-      if is_directory(path):
-        log.debug('DIRECTORY: %s' % command)
-        # Update current path
-        self._current = path
-        # This is a directory, so we are going to list all child files and folders.
-        items = ['..']  + os.listdir(path)
-      elif is_executable(command):
-        # This is a full path executable, so run it.
-        log.debug('EXECUTABLE: %s' % command)
-        execute(command, path)
-        return
-      else:
-        # This is just a file, use mailcap and try to find the right program to run it.
-        log.debug('FILE: %s' % path)
-        self._history.add_file(command, path)
-        execute('see "%s"' % path)
-        return
+      items += new_items
     else:
-      # If no command was passed in, show everything
+      # default initial listing
       items = self._history.keys() + \
               self._config.folders + \
               list(self._config.session.keys()) + \
@@ -84,3 +51,67 @@ class DMenu(object):
     # If we got something back, run dmenu again
     if command:
       self.run(command.strip())
+
+  def _handle_command(self, command):
+    if not self._current:
+      # try to process the command as a toplevel stuff
+      if self._try_as_toplevel_command(command):
+          return None
+
+      # try it as a calculate expression
+      calculate_result = self._try_as_calculate(command)
+      if calculate_result:
+          return calculate_result
+
+    # fall back to handling as a file / directory
+    return self._open_file_or_directory(command)
+
+  def _try_as_toplevel_command(self, command):
+      if command in self._history:
+        log.debug('HISTORY: %s' % command)
+        # This is a history command, so run it.
+        self._history.execute(command)
+        return True
+      if command in self._config.session.keys():
+        log.debug('SESSION: %s' % command)
+        # This is a session command, so run it.
+        execute(self._config.session[command])
+        return True
+      if command in self._config.executables:
+        log.debug('EXECUTABLE: %s' % command)
+        self._history.add_executable(command)
+        # This is an executable, so run it.
+        execute(command)
+        return True
+
+  def _try_as_calculate(self, command):
+      if command[0] == '=':
+        log.debug('CALCULATION: %s' % command)
+        result = calculate(command[1:])
+        return ['%s' % result]
+
+  def _open_file_or_directory(self, filename):
+    # Otherwise, we must be walking a path, so join our current path
+    if self._current:
+        path = os.path.join(self._current, home(filename))
+    else:
+        path = home(filename)
+
+    if is_directory(path):
+      log.debug('DIRECTORY: %s' % filename)
+      # Update current path
+      self._current = path
+      # This is a directory, so we are going to list all child files and folders.
+      items = ['..'] + os.listdir(path)
+      return items
+    elif is_executable(filename):
+      # This is a full path executable, so run it.
+      log.debug('EXECUTABLE: %s' % filename)
+      execute(filename, path)
+      return
+    else:
+      # This is just a file, use mailcap and try to find the right program to run it.
+      log.debug('FILE: %s' % path)
+      self._history.add_file(filename, path)
+      execute('edit "%s"' % path)
+      return

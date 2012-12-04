@@ -22,3 +22,10 @@ class UtilTest(TestCase):
     self.assertTrue(is_directory('/bin'))
     self.assertFalse(is_directory('/etc/hosts'))
     self.assertFalse(is_directory('/doesnt_exist'))
+
+  def test_calculate(self):
+    self.assertEqual(str(calculate("2+2")), "4")
+    self.assertEqual(str(calculate("10/4")), "2")
+    self.assertEqual(str(calculate("10.0/4")), "2.5")
+    self.assertEqual(str(calculate("log10(100)")), "2.0")
+    self.assertEqual(str(calculate("foobar((/234")), "invalid syntax!")
