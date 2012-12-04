@@ -59,6 +59,22 @@ def is_directory(path):
   '''Is this path a directory'''
   return os.path.isdir(path)
 
+def calculate(expression):
+  '''Return the results for a numeric expression'''
+  # code based on http://lybniz2.sourceforge.net/safeeval.html
+  import math
+  safe_calls = ['math','acos', 'asin', 'atan', 'atan2', 'ceil', 'cos', 'cosh', 'degrees',
+                'e', 'exp', 'fabs', 'floor', 'fmod', 'frexp', 'hypot', 'ldexp', 'log', 
+                'log10', 'modf', 'pi', 'pow', 'radians', 'sin', 'sinh', 'sqrt', 'tan', 'tanh']
+  # use the list to filter the local namespace
+  safe_dict = dict([ (k, math.__dict__.get(k, None)) for k in safe_calls ])
+  #add any needed builtins back in.
+  safe_dict['abs'] = abs
+  try:
+      return eval(expression, {"__builtins__":None}, safe_dict)
+  except:
+      return "invalid syntax!"
+
 ##########
 # CONFIG #
 ##########
@@ -227,48 +243,16 @@ class DMenu(object):
   def run(self, command=''):
     '''Run the dmenu command recursively'''
     items = []
-    # Figure out which items to display
+    # user entered something
     if command:
-      # If current is empty, we are not walking a directory tree.  So, try and see if this is a
-      # session command or a path executable.
-      if not self._current:
-        if command in self._history:
-          log.debug('HISTORY: %s' % command)
-          # This is a history command, so run it.
-          self._history.execute(command)
+      #import pdb; pdb.set_trace()
+      new_items = self._handle_command(command)
+      if not new_items:
+          # this means that the command was actually a final that we started, nothing else to do
           return
-        if command in self._config.session.keys():
-          log.debug('SESSION: %s' % command)
-          # This is a session command, so run it.
-          execute(self._config.session[command])
-          return
-        if command in self._config.executables:
-          log.debug('EXECUTABLE: %s' % command)
-          self._history.add_executable(command)
-          # This is an executable, so run it.
-          execute(command)
-          return
-      # Otherwise, we must be walking a path, so join our current path
-      path = os.path.join(self._current, home(command));
-      if is_directory(path):
-        log.debug('DIRECTORY: %s' % command)
-        # Update current path
-        self._current = path
-        # This is a directory, so we are going to list all child files and folders.
-        items = ['..'] + os.listdir(path)
-      elif is_executable(command):
-        # This is a full path executable, so run it.
-        log.debug('EXECUTABLE: %s' % command)
-        execute(command, path)
-        return
-      else:
-        # This is just a file, use mailcap and try to find the right program to run it.
-        log.debug('FILE: %s' % path)
-        self._history.add_file(command, path)
-        execute('edit "%s"' % path)
-        return
+      items += new_items
     else:
-      # If no command was passed in, show everything
+      # default initial listing
       items = self._history.keys() + \
               self._config.folders + \
               list(self._config.session.keys()) + \
@@ -284,6 +268,59 @@ class DMenu(object):
     if command:
       self.run(command.strip())
 
+  def _handle_command(self, command):
+    if not self._current:
+      # try to process the command as a toplevel stuff
+      new_items = self._handle_toplevel_command(command)
+      if new_items:
+        return new_items
+
+    # fall back to handle it as a normal file
+    return self._open_file_or_directory(command)
+
+  def _open_file_or_directory(self, filename):
+    # Otherwise, we must be walking a path, so join our current path
+    path = os.path.join(self._current, home(filename));
+    if is_directory(path):
+      log.debug('DIRECTORY: %s' % filename)
+      # Update current path
+      self._current = path
+      # This is a directory, so we are going to list all child files and folders.
+      items = ['..'] + os.listdir(path)
+      return items
+    elif is_executable(filename):
+      # This is a full path executable, so run it.
+      log.debug('EXECUTABLE: %s' % command)
+      execute(command, path)
+      return
+    else:
+      # This is just a file, use mailcap and try to find the right program to run it.
+      log.debug('FILE: %s' % path)
+      self._history.add_file(command, path)
+      execute('edit "%s"' % path)
+      return
+
+  def _handle_toplevel_command(self, command):
+      if command in self._history:
+        log.debug('HISTORY: %s' % command)
+        # This is a history command, so run it.
+        self._history.execute(command)
+        return
+      if command in self._config.session.keys():
+        log.debug('SESSION: %s' % command)
+        # This is a session command, so run it.
+        execute(self._config.session[command])
+        return
+      if command in self._config.executables:
+        log.debug('EXECUTABLE: %s' % command)
+        self._history.add_executable(command)
+        # This is an executable, so run it.
+        execute(command)
+        return
+      if command[0] == '=':
+        log.debug('CALCULATION: %s' % command)
+        result = calculate(command[1:])
+        return ['%s' % result]
 ########
 # MAIN #
 ########
