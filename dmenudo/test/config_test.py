@@ -16,7 +16,9 @@ CONFIG = {
     OPT_LEVEL: '' },
   SEC_SESSION: {},
   SEC_BROWSE: {
-    OPT_DIRS: '' },
+    OPT_DIRS: '',
+    OPT_EXECUTABLE_DIRS: '/bin'
+     },
   SEC_HISTORY: {
     OPT_FILE: '' },
   SEC_COMMANDS: {

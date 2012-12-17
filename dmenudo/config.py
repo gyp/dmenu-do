@@ -13,7 +13,7 @@
 # 02110-1301, USA.
 
 import os
-from ConfigParser import ConfigParser
+from ConfigParser import ConfigParser, NoOptionError
 import logging as log
 from subprocess import Popen, PIPE
 
@@ -35,11 +35,15 @@ class Config(object):
     self.dmenu = [f.strip() for f in self._config.get(SEC_COMMANDS, OPT_DMENU).split(' ')]
     self._exec = [f.strip() for f in self._config.get(SEC_COMMANDS, OPT_EXEC).split(' ')]
 
+    try:
+        self.executable_dirs = [f.strip() for f in self._config.get(SEC_BROWSE, OPT_EXECUTABLE_DIRS).split(',')]
+    except NoOptionError:
+        self.executable_dirs = os.environ['PATH'].split(':')
+    
+
   @property
   def executables(self):
-    '''Get list of executables based on $PATH'''
-    path = os.environ['PATH'].split(':')
-    proc = Popen(self._exec + path, stdout=PIPE)
+    proc = Popen(self._exec + self.executable_dirs, stdout=PIPE)
     lines = []
     line = proc.stdout.readline()
     while line:
