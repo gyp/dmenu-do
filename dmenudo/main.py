@@ -19,14 +19,16 @@ from optparse import OptionParser
 from config import Config
 from history import History
 from dmenu import DMenu
+from freedesktop_menu import FreeDesktopMenu
 from const import *
 
 def main(config_file):
   '''main method'''
   config = Config(config_file)
   history = History(config.history_file)
+  freedesktop_menu = FreeDesktopMenu()
   try:
-    dmenu = DMenu(config, history)
+    dmenu = DMenu(config, history, freedesktop_menu)
     dmenu.run()
   finally:
     history.close()

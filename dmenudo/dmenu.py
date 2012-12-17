@@ -20,10 +20,11 @@ from util import execute, home, is_directory, is_executable, calculate
 
 class DMenu(object):
 
-  def __init__(self, config, history):
+  def __init__(self, config, history, freedesktop_menu):
     self._current = None
     self._config = config
     self._history = history
+    self._freedesktop_menu = freedesktop_menu
 
   def run(self, command=''):
     '''Run the dmenu command recursively'''
@@ -40,7 +41,8 @@ class DMenu(object):
       items = self._history.keys() + \
               self._config.folders + \
               list(self._config.session.keys()) + \
-              sorted(self._config.executables)
+              sorted(self._config.executables) + \
+              self._freedesktop_menu.getEntries()
     # Open the dmenu command
     proc = Popen(self._config.dmenu, shell=False, stdout=PIPE, stdin=PIPE)
     # Run dmenu with the items defined above
@@ -77,6 +79,14 @@ class DMenu(object):
         # This is a session command, so run it.
         execute(self._config.session[command])
         return True
+
+      freedesktop_exec = self._freedesktop_menu.getExec(command)
+      if freedesktop_exec:
+        log.debug('FREEDESKTOP MENU: %s' % command)
+        # no need to add it to the history, we'll find it anyway
+        execute(freedesktop_exec)
+        return True
+
       if command in self._config.executables:
         log.debug('EXECUTABLE: %s' % command)
         self._history.add_executable(command)
